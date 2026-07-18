@@ -1368,3 +1368,35 @@ not the specific names.
 
 Reviewers should reject new change-detector tests; authors should convert
 them into invariants before re-requesting review.
+
+---
+
+## Cursor Cloud specific instructions
+
+Environment is refreshed on startup by the update script (`uv sync` +
+`npm ci`); the notes below are the non-obvious things that script does NOT
+handle.
+
+- **Python env lives in `.venv`** (created by `uv sync`). Activate it before
+  running anything: `source .venv/bin/activate`. `uv` is the package manager
+  (installed under `~/.local/bin`, already on `PATH` for login shells). The
+  `hermes` entry point is `.venv/bin/hermes`.
+- **Tests:** use `scripts/run_tests.sh` (never raw `pytest`), per the Testing
+  section above. Lint with `ruff check .`. TS typecheck via
+  `npm run --prefix <pkg> typecheck` (`ui-tui`, `web`, `apps/desktop`,
+  `apps/shared`). Node deps come from a root `npm ci` (npm workspaces).
+- **The product is the `hermes` CLI** — every other surface (TUI, gateway,
+  dashboard, desktop) wraps the same Python core. Run interactively with
+  `hermes`, or one-shot with `hermes -z "your prompt"`.
+- **No LLM provider key ships in this environment.** The agent cannot chat
+  without a model endpoint. To exercise the full agent loop without a real
+  key, point it at a local OpenAI-compatible endpoint via `~/.hermes/config.yaml`
+  (`model.provider: custom`, `model.base_url: http://127.0.0.1:<port>/v1`,
+  a `model.default` name) plus any non-empty `OPENAI_API_KEY` in
+  `~/.hermes/.env`. The turn client uses **streaming (SSE)**, so a mock must
+  serve `text/event-stream` chunks (and `GET /v1/models`), not just a plain
+  JSON completion. For real model use, configure a provider key via
+  `hermes setup` (or `hermes setup --portal`).
+- Config/state/sessions live under `~/.hermes/` (SQLite, no external DB
+  needed). `hermes doctor` reports which optional toolsets are gated off for
+  lack of keys — that is expected, not a setup failure.
